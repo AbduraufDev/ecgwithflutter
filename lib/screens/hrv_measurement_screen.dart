@@ -21,6 +21,8 @@ class _HRVMeasurementScreenState extends State<HRVMeasurementScreen> {
   String _statusMessage = 'Kamerani tekshirib ko\'rayotgan...';
   bool _isInitialized = false;
   bool _isMeasuring = false;
+  bool _hasError = false;
+  bool _permissionDenied = false;
   int _measurementDuration = 0;
   Timer? _measurementTimer;
   int _totalMeasurementTime = 30; // 30 soniya
@@ -33,17 +35,30 @@ class _HRVMeasurementScreenState extends State<HRVMeasurementScreen> {
   }
 
   Future<void> _initializeCamera() async {
+    setState(() {
+      _hasError = false;
+      _permissionDenied = false;
+      _statusMessage = 'Kamerani tekshirib ko\'rayotgan...';
+    });
+
     // Kamera ruxsati
     final PermissionStatus status = await Permission.camera.request();
     if (!status.isGranted) {
-      setState(() => _statusMessage = 'Kamera ruxsati rad etildi');
+      setState(() {
+        _hasError = true;
+        _permissionDenied = true;
+        _statusMessage = 'Kamera ruxsati rad etildi';
+      });
       return;
     }
 
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        setState(() => _statusMessage = 'Kamera topilmadi');
+        setState(() {
+          _hasError = true;
+          _statusMessage = 'Kamera topilmadi';
+        });
         return;
       }
 
@@ -71,7 +86,10 @@ class _HRVMeasurementScreenState extends State<HRVMeasurementScreen> {
 
       _startImageStream();
     } catch (e) {
-      setState(() => _statusMessage = 'Xato: $e');
+      setState(() {
+        _hasError = true;
+        _statusMessage = 'Xato: $e';
+      });
     }
   }
 
@@ -395,22 +413,105 @@ class _HRVMeasurementScreenState extends State<HRVMeasurementScreen> {
               ],
             )
           : Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(_statusMessage, textAlign: TextAlign.center),
-                ],
+              child: _hasError
+                  ? _buildErrorWidget()
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(_statusMessage, textAlign: TextAlign.center),
+                        ),
+                      ],
+                    ),
+            ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Padding(
+      padding: EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _permissionDenied ? Icons.camera_alt_outlined : Icons.error_outline,
+            size: 80,
+            color: Colors.red[400],
+          ),
+          SizedBox(height: 24),
+          Text(
+            _statusMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 16),
+          if (_permissionDenied) ...[
+            Text(
+              'Dasturni ishlatish uchun kamera ruxsati kerak.\nIltimos, sozlamalardan ruxsat bering.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+            SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await openAppSettings();
+              },
+              icon: Icon(Icons.settings),
+              label: Text('Sozlamalarga o\'tish'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
+            SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _initializeCamera,
+              icon: Icon(Icons.refresh),
+              label: Text('Qayta urinish'),
+              style: OutlinedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Iltimos, qayta urinib ko\'ring.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+            SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _initializeCamera,
+              icon: Icon(Icons.refresh),
+              label: Text('Qayta urinish'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
   @override
   void dispose() {
     _measurementTimer?.cancel();
-    _cameraController.dispose();
+    if (_isInitialized) {
+      _cameraController.dispose();
+    }
     super.dispose();
   }
 }
