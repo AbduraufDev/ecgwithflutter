@@ -1,64 +1,108 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'screens/hrv_measurement_screen.dart';
-import 'screens/history_screen.dart';
+import 'package:camera/camera.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-void main() {
-  runApp(const HRVApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const SimpleCameraApp());
 }
 
-class HRVApp extends StatelessWidget {
-  const HRVApp({Key? key}) : super(key: key);
+class SimpleCameraApp extends StatelessWidget {
+  const SimpleCameraApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Welltory HR Monitor',
+      title: 'Kamera',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.purple,
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.transparent,
-        textTheme: GoogleFonts.interTextTheme(
-          ThemeData.dark().textTheme,
-        ),
-        appBarTheme: AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          titleTextStyle: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            textStyle: GoogleFonts.inter(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          color: Colors.white.withOpacity(0.1),
-        ),
-      ),
-      home: HRVMeasurementScreen(),
-      routes: {
-        '/history': (context) => HistoryScreen(),
-      },
+      theme: ThemeData.dark(),
+      home: CameraScreen(),
     );
+  }
+}
+
+class CameraScreen extends StatefulWidget {
+  @override
+  _CameraScreenState createState() => _CameraScreenState();
+}
+
+class _CameraScreenState extends State<CameraScreen> {
+  CameraController? _controller;
+  bool _isInitialized = false;
+  String _message = 'Kamera yuklanmoqda...';
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeCamera();
+  }
+
+  Future<void> _initializeCamera() async {
+    // Kamera ruxsati so'rash
+    final status = await Permission.camera.request();
+    if (!status.isGranted) {
+      setState(() {
+        _message = 'Kamera ruxsati rad etildi';
+      });
+      return;
+    }
+
+    try {
+      // Kameralarni olish
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        setState(() {
+          _message = 'Kamera topilmadi';
+        });
+        return;
+      }
+
+      // Orqa kamerani tanlash
+      final camera = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+
+      // Kamera kontrollerini yaratish
+      _controller = CameraController(
+        camera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _controller!.initialize();
+
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _message = 'Xato: $e';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: _isInitialized && _controller != null
+            ? CameraPreview(_controller!)
+            : Text(
+                _message,
+                style: TextStyle(color: Colors.white, fontSize: 18),
+                textAlign: TextAlign.center,
+              ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 }
