@@ -42,13 +42,9 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	
-	<!-- Kamera ruxsati -->
+	<!-- Kamera va flashlight ruxsati (iOS'da flash kameraning bir qismi) -->
 	<key>NSCameraUsageDescription</key>
-	<string>Barmoqdan yurak urishi o'lchash uchun kamera kerak</string>
-	
-	<!-- Flashlight ruxsati -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Surat saqlash uchun ruxsat kerak</string>
+	<string>Yurak urish tezligi va HRV (Heart Rate Variability) ni o'lchash uchun kamera va flashlight kerak. Dastur barmoqdan o'tadigan qon oqimi o'zgarishini kamera orqali tahlil qiladi.</string>
 
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>

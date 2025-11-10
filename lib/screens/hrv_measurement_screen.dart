@@ -41,13 +41,47 @@ class _HRVMeasurementScreenState extends State<HRVMeasurementScreen> {
       _statusMessage = 'Kamerani tekshirib ko\'rayotgan...';
     });
 
-    // Kamera ruxsati
-    final PermissionStatus status = await Permission.camera.request();
+    // Avval kamera ruxsati statusini tekshirish
+    PermissionStatus status = await Permission.camera.status;
+
+    // Agar ruxsat berilmagan bo'lsa, so'rash
     if (!status.isGranted) {
+      status = await Permission.camera.request();
+    }
+
+    // Ruxsat statusini batafsil tekshirish
+    if (status.isDenied) {
       setState(() {
         _hasError = true;
         _permissionDenied = true;
         _statusMessage = 'Kamera ruxsati rad etildi';
+      });
+      return;
+    }
+
+    if (status.isPermanentlyDenied) {
+      setState(() {
+        _hasError = true;
+        _permissionDenied = true;
+        _statusMessage = 'Kamera ruxsati doimiy rad etildi.\nSozlamalardan ruxsat berish kerak.';
+      });
+      return;
+    }
+
+    if (status.isRestricted) {
+      setState(() {
+        _hasError = true;
+        _permissionDenied = true;
+        _statusMessage = 'Kamera ruxsati cheklangan.\nQurilma sozlamalarini tekshiring.';
+      });
+      return;
+    }
+
+    if (!status.isGranted) {
+      setState(() {
+        _hasError = true;
+        _permissionDenied = true;
+        _statusMessage = 'Kamera ruxsati berilmadi';
       });
       return;
     }
@@ -79,9 +113,16 @@ class _HRVMeasurementScreenState extends State<HRVMeasurementScreen> {
 
       if (!mounted) return;
 
+      // Flashlight'ni yoqish (HRV o'lchash uchun zarur)
+      try {
+        await _cameraController.setFlashMode(FlashMode.torch);
+      } catch (e) {
+        print('Flash yoqishda xato: $e');
+      }
+
       setState(() {
         _isInitialized = true;
-        _statusMessage = 'Barmoqni kameraga qo\'ying va flash yonib turganini tekshiring';
+        _statusMessage = 'Tayyor! Barmoqni kameraga qo\'ying va "Boshlash" tugmasini bosing';
       });
 
       _startImageStream();
@@ -510,6 +551,12 @@ class _HRVMeasurementScreenState extends State<HRVMeasurementScreen> {
   void dispose() {
     _measurementTimer?.cancel();
     if (_isInitialized) {
+      // Flash'ni o'chirish
+      try {
+        _cameraController.setFlashMode(FlashMode.off);
+      } catch (e) {
+        print('Flash o\'chirishda xato: $e');
+      }
       _cameraController.dispose();
     }
     super.dispose();
