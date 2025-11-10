@@ -49,10 +49,7 @@
 	<!-- Flashlight ruxsati -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Surat saqlash uchun ruxsat kerak</string>
-	
-	<!-- Minimum iOS versiya -->
-	<key>MinimumOSVersion</key>
-	<string>11.0</string>
+
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
